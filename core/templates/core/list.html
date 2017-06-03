@@ -14,5 +14,36 @@
         }
     </script>
 
-    <div></div>
+    <table>
+      <thead>
+          <tr>
+            <th>id</th>
+            <th>name</th>
+            {% for p_name in permission_values %}
+              <th>{{ p_name }}</th>
+            {% endfor %}
+            <th>del</th>
+          </tr>
+      </thead>
+      <tbody>
+      {% for user in user_list %}
+        <tr>
+            <td>{{ user.id }}</td>
+            <td>{{ user.name }}</td>
+            {% with user.name as user_name %}
+                {% for p_name in permission_values %}
+                  {% if p_name in permission_book.user_name %}
+                    <td>True</td>
+                  {% else %}
+                    <td>False</td>
+                  {% endif %}
+                {% endfor %}
+            {% endwith %}
+            <td>
+                <a href="{% url 'del_user' user.id %}">Delete</a>
+            </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
 {% endblock %}
