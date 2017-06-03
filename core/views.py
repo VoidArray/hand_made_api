@@ -1,10 +1,10 @@
-from django.views.generic import ListView, FormView, View, UpdateView
+from django.views.generic import ListView, FormView, CreateView
 from django.contrib.auth import login
 from django.core.urlresolvers import reverse_lazy, reverse
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseNotAllowed
 
 from .models import User, Permission
-from .forms import LoginForm
+from .forms import LoginForm, RegistrationForm
 
 from yet_another_django.mixins import CheckPermissionsMixin
 
@@ -45,13 +45,44 @@ class ListUsersView(CheckPermissionsMixin, ListView):
         return ctx
 
 
-class DeleteUserView(CheckPermissionsMixin, UpdateView):
+class UserCreateView(CheckPermissionsMixin, CreateView):
 
-    permissions = [Permission.Choices.del_user, ]
-    model = User
+    permissions = [Permission.Choices.create_user, ]
+    form_class = RegistrationForm
+    success_url = reverse_lazy('users_list')
+    template_name = "core/registration.html"
 
-    def get(self, request, *args, **kwargs):
-        user = self.get_object()
-        user.is_active = False
-        user.save()
-        return JsonResponse({'success': True}, safe=False)
+
+def api_enter_point(request, pk):
+
+    def _update_user(pk):
+        print(request)
+        return {}
+
+    def _watch_user(pk):
+        user_info = {
+            'name': pk.name,
+            'permissions': pk.get_avaible_permissions()
+        }
+        return user_info
+
+    def _delete_user(pk):
+        del_user = User.objects.filter(pk=pk).first()
+        if del_user:
+            del_user.is_acitve = False
+            del_user.save()
+        return {}
+
+    user = request.user
+
+    if request.method == "GET" and user.has_permission(Permission.Choices.watch_list):
+        d = _watch_user(pk)
+    elif request.method == "PUT" and user.has_permission(Permission.Choices.edit_user):
+        d = _update_user(pk)
+    elif request.method == "PATCH" and user.has_permission(Permission.Choices.edit_user):
+        d = _update_user(pk)
+    elif request.method == "DELETE" and user.has_permission(Permission.Choices.del_user):
+        d = _delete_user(pk)
+    else:
+        return HttpResponseNotAllowed()
+    return JsonResponse(d)

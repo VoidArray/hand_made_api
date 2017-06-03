@@ -40,10 +40,13 @@
                 {% endfor %}
             {% endwith %}
             <td>
-                <a href="{% url 'del_user' user.id %}">Delete</a>
+
             </td>
         </tr>
       {% endfor %}
       </tbody>
     </table>
+    <div>
+        <a href="{% url 'create_user' %}">Add new user</a>
+    </div>
 {% endblock %}

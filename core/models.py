@@ -51,6 +51,9 @@ class User(AbstractBaseUser):
             return True
         return False
 
+    def get_avaible_permissions(self):
+        return Permission.objects.filter(user=self).values_list('status')
+
 
 class Permission(models.Model):
 

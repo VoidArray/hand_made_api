@@ -1,3 +1,17 @@
 .inline {
     display: inline-block;
 }
+
+TABLE {
+    width: 600px;
+    border-collapse: collapse;
+}
+
+TD, TH {
+    padding: 30px;
+    border: 1px solid black;
+}
+
+TH {
+    background: orange;
+}
