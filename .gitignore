@@ -1,0 +1,5 @@
+.directory
+*.py[cod]
+.idea
+media/
+local_settings.py
