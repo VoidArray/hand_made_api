@@ -3,13 +3,39 @@
 {% block content %}
 
     <script>
-        function sendAjax() {
+        function changePerm(userId, perm){
+            var body = null,
+                url = '/users/' + userId,
+                newVal = null;
+
+            if (event.target.innerHTML == 'True'){
+                newVal = 'False';
+            } else {
+                newVal = 'True';
+            }
+            body = 'permission_name=' + encodeURIComponent(perm) + '&new_value=' + encodeURIComponent(newVal);
+            if (sendAjax('PUT', url, body)){
+                event.target.innerHTML = newVal;
+            }
+        }
+
+        function delUser(userId){
+            var url = '/users/' + userId;
+            if (sendAjax('DELETE', url, '')){
+                event.target.parentElement.innerHTML = '';
+            }
+        }
+        
+        function sendAjax(method, url, POST) {
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', url, false);
-            xhr.send();
+            xhr.open(method, url, false);
+            xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+            xhr.send(POST);
 
             if (xhr.status == 200) {
-
+                return true;
+            } else {
+                return false;
             }
         }
     </script>
@@ -19,29 +45,25 @@
           <tr>
             <th>id</th>
             <th>name</th>
-            {% for p_name in permission_values %}
-              <th>{{ p_name }}</th>
+            {% for permission_name in permission_values %}
+              <th>{{ permission_name }}</th>
             {% endfor %}
             <th>del</th>
           </tr>
       </thead>
       <tbody>
-      {% for user in user_list %}
+      {% for user_name, user_val in users_list.items %}
         <tr>
-            <td>{{ user.id }}</td>
-            <td>{{ user.name }}</td>
-            {% with user.name as user_name %}
-                {% for p_name in permission_values %}
-                  {% if p_name in permission_book.user_name %}
-                    <td>True</td>
-                  {% else %}
-                    <td>False</td>
-                  {% endif %}
-                {% endfor %}
-            {% endwith %}
-            <td>
-
-            </td>
+            <td>{{ user_val.id }}</td>
+            <td>{{ user_name }}</td>
+            {% for permission_name in permission_values %}
+              {% if permission_name in user_val %}
+                <td onclick="changePerm('{{ user_val.id }}', '{{ permission_name }}')">True</td>
+              {% else %}
+                <td onclick="changePerm('{{ user_val.id }}', '{{ permission_name }}')">False</td>
+              {% endif %}
+            {% endfor %}
+            <td onclick="delUser('{{ user_val.id }}')">Delete</td>
         </tr>
       {% endfor %}
       </tbody>

@@ -2,6 +2,29 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 
 
+class Permission(models.Model):
+
+    class Choices:
+        watch_list = 'watch_list'
+        create_user = 'create user'
+        edit_user = 'edit user'
+        del_user = 'del user'
+
+        values = (
+            (watch_list, 'watch_list'),
+            (create_user, 'create user'),
+            (edit_user, 'edit user'),
+            (del_user, 'del user'),
+        )
+
+    user = models.ForeignKey('User', verbose_name='User')
+    status = models.CharField('status', max_length=15, choices=Choices.values)
+
+    class Meta:
+        verbose_name = 'permission'
+        verbose_name_plural = 'permissions'
+
+
 class UserManager(BaseUserManager):
 
     def create_user(self, name, password, *args, **kwargs):
@@ -47,32 +70,26 @@ class User(AbstractBaseUser):
         return self.name
 
     def has_permission(self, permission):
+        if self.is_superuser:
+            return True
+
+        if not self.is_active:
+            return False
+
         if Permission.objects.filter(user=self, status=permission).count() > 0:
             return True
         return False
 
+    def remove_permission(self, permission):
+        p = Permission.objects.filter(user=self, status=permission).first()
+        if p:
+            p.delete()
+
+    def add_permission(self, permission):
+        p = Permission.objects.filter(user=self, status=permission).first()
+        if not p:
+            p = Permission(user=self, status=permission)
+            p.save()
+
     def get_avaible_permissions(self):
         return Permission.objects.filter(user=self).values_list('status')
-
-
-class Permission(models.Model):
-
-    class Choices:
-        watch_list = 'watch_list'
-        create_user = 'create user'
-        edit_user = 'edit user'
-        del_user = 'del user'
-
-        values = (
-            (watch_list, 'watch_list'),
-            (create_user, 'create user'),
-            (edit_user, 'edit user'),
-            (del_user, 'del user'),
-        )
-
-    user = models.ForeignKey(User, verbose_name='User')
-    status = models.CharField('status', max_length=15, choices=Choices.values)
-
-    class Meta:
-        verbose_name = 'permission'
-        verbose_name_plural = 'permissions'

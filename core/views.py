@@ -1,7 +1,8 @@
-from django.views.generic import ListView, FormView, CreateView
+from collections import OrderedDict
+from django.views.generic import FormView, TemplateView, CreateView
 from django.contrib.auth import login
 from django.core.urlresolvers import reverse_lazy, reverse
-from django.http import JsonResponse, HttpResponseNotAllowed
+from django.http import JsonResponse, HttpResponseNotAllowed, HttpResponseForbidden, QueryDict
 
 from .models import User, Permission
 from .forms import LoginForm, RegistrationForm
@@ -22,26 +23,30 @@ class LoginView(FormView):
         return super(LoginView, self).form_valid(form)
 
 
-class ListUsersView(CheckPermissionsMixin, ListView):
+class ListUsersView(CheckPermissionsMixin, TemplateView):
 
     template_name = "core/list.html"
-    model = User
     permissions = [Permission.Choices.watch_list, ]
 
     def get_context_data(self, **kwargs):
         ctx = super(ListUsersView, self).get_context_data(**kwargs)
         ctx['permission_values'] = [p[1] for p in Permission.Choices.values]
 
-        permissions = Permission.objects.values_list('user__name', 'status')
-        permission_book = {}
-        for p in permissions:
-            user_name = p[0]
-            permission_name = p[1]
-            if user_name not in permission_book:
-                permission_book[user_name] = {}
-            permission_book[user_name][permission_name] = True
+        all_users = User.objects.filter(is_active=True).values_list('id', 'name')
+        all_users_book = OrderedDict()
+        for u in all_users:
+            u_id, u_name = u
+            all_users_book[u_name] = {}
+            all_users_book[u_name]['id'] = u_id
 
-        ctx['permission_book'] = permission_book
+        permissions = (Permission.objects.order_by('user__id')
+                                         .filter(user__is_active=True)
+                                         .values_list('user__name', 'status'))
+        for p in permissions:
+            user_name, status = p
+            all_users_book[user_name][status] = True
+
+        ctx['users_list'] = all_users_book
         return ctx
 
 
@@ -55,34 +60,49 @@ class UserCreateView(CheckPermissionsMixin, CreateView):
 
 def api_enter_point(request, pk):
 
-    def _update_user(pk):
-        print(request)
+    def _update_user(pk, qd):
+        updated_user = User.objects.filter(pk=pk).first()
+        permission_name = qd.get('permission_name', None)
+        new_value = qd.get('new_value', None)
+        if updated_user and permission_name and new_value:
+            if new_value == 'False':
+                updated_user.remove_permission(permission_name)
+            else:
+                updated_user.add_permission(permission_name)
         return {}
 
     def _watch_user(pk):
-        user_info = {
-            'name': pk.name,
-            'permissions': pk.get_avaible_permissions()
-        }
+        user = User.objects.filter(pk=pk).first()
+        if user:
+            user_info = {
+                'name': user.name,
+                'permissions': user.get_avaible_permissions()
+            }
+        else:
+            user_info = {}
         return user_info
 
     def _delete_user(pk):
         del_user = User.objects.filter(pk=pk).first()
         if del_user:
-            del_user.is_acitve = False
+            del_user.is_active = False
             del_user.save()
         return {}
 
     user = request.user
+    if not user.is_authenticated:
+        return HttpResponseForbidden()
+
+    if request.method not in ['GET', 'PUT', 'DELETE']:
+        return HttpResponseNotAllowed(['GET', 'PUT', 'DELETE'])
 
     if request.method == "GET" and user.has_permission(Permission.Choices.watch_list):
         d = _watch_user(pk)
     elif request.method == "PUT" and user.has_permission(Permission.Choices.edit_user):
-        d = _update_user(pk)
-    elif request.method == "PATCH" and user.has_permission(Permission.Choices.edit_user):
-        d = _update_user(pk)
+        qd = QueryDict(request.body.decode('utf8'))
+        d = _update_user(pk, qd)
     elif request.method == "DELETE" and user.has_permission(Permission.Choices.del_user):
         d = _delete_user(pk)
     else:
-        return HttpResponseNotAllowed()
+        return HttpResponseForbidden()
     return JsonResponse(d)

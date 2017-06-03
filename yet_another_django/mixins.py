@@ -11,9 +11,8 @@ class CheckPermissionsMixin(View):
         if not request.user.is_authenticated():
             return HttpResponseRedirect(reverse('login'))
 
-        if not request.user.is_superuser:
-            for p in self.permissions:
-                if not request.user.has_permission(p):
-                    return HttpResponseForbidden()
+        for p in self.permissions:
+            if not request.user.has_permission(p):
+                return HttpResponseForbidden()
 
         return super(CheckPermissionsMixin, self).dispatch(request, *args, **kwargs)
