@@ -25,5 +25,14 @@
 ####Установить модули для Python 3
 
 django
+####Создать таблицы в БД
+
+python manage.py migrate
+
+####Создать суперпользователя
+
+python manage.py createsuperuser
 
 ####Запустить.
+
+python manage.py runserver

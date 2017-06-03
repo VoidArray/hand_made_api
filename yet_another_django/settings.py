@@ -2,6 +2,7 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+AUTH_USER_MODEL = "core.User"
 
 SECRET_KEY = 'h6i4zg(tkcy(9tdxs34+c$o6uf1d3d@i(hvk(+!9@@tums(-l2'
 
